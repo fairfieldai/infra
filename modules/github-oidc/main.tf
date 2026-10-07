@@ -29,7 +29,7 @@ data "aws_iam_policy_document" "assume" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.repository}:environment:${each.key}"]
+      values   = ["${var.subject_prefix}:environment:${each.key}"]
     }
   }
 }
