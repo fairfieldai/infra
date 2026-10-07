@@ -39,3 +39,13 @@ variable "deploy_role_name" {
   description = "IAM role granted permission to update the function code"
   type        = string
 }
+
+variable "cognito_issuer" {
+  description = "Issuer URL of the Cognito user pool whose access tokens the API accepts"
+  type        = string
+}
+
+variable "cognito_client_id" {
+  description = "Cognito app client ID the API accepts access tokens from"
+  type        = string
+}

@@ -7,10 +7,12 @@ Terraform for the fairfieldct.ai AWS account (401429382694).
 - `environments/` — root modules, one state file each
   - `global` — account-wide resources: the `fairfieldct.ai` Route 53 hosted zone,
     GitHub Actions OIDC provider, and deploy roles
-  - `dev` — static site and API at `dev.fairfieldct.ai`
-  - `prod` — static site and API at `www.fairfieldct.ai`; `fairfieldct.ai` redirects to it
+  - `dev` — static site and API at `dev.fairfieldct.ai`, sign-in at `auth.dev.fairfieldct.ai`
+  - `prod` — static site and API at `www.fairfieldct.ai`; `fairfieldct.ai` redirects to it;
+    sign-in at `auth.fairfieldct.ai`
 - `modules/` — reusable modules called by the environments
   - `api` — HTTP API Gateway, Rust Lambda, DynamoDB table, and IAM role
+  - `auth` — Cognito user pool, managed login domain, and app client
   - `dns` — Route 53 public hosted zone
   - `github-environment` — GitHub Environment, deploy rules, and Actions variables
   - `github-oidc` — GitHub Actions OIDC provider and deploy roles
@@ -48,7 +50,8 @@ The `fairfieldai/site` repo deploys the site and API. Each workflow job sets
 `environment: dev` or `environment: prod` and assumes that environment's role
 with `aws-actions/configure-aws-credentials`. Terraform sets these GitHub
 Environment variables for the workflows: `AWS_ROLE_ARN`, `AWS_REGION`,
-`S3_BUCKET`, `CLOUDFRONT_DISTRIBUTION_ID`, and `LAMBDA_FUNCTION_NAME`. The workflow
+`S3_BUCKET`, `CLOUDFRONT_DISTRIBUTION_ID`, `LAMBDA_FUNCTION_NAME`, `COGNITO_DOMAIN`,
+`COGNITO_CLIENT_ID`, and `COGNITO_ISSUER`. The workflow
 needs `permissions: id-token: write`. The `prod` Environment only accepts runs
 from `main`, and each prod deploy waits for approval.
 
