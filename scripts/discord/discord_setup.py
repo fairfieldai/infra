@@ -1,7 +1,8 @@
 """Configure the fairfieldct.ai Discord server.
 
 Creates or updates the roles, categories, channels, permissions, server settings, rules post,
-AutoMod rules, slash commands, invite, and the #inbox and #announcements webhooks. Everything
+AutoMod rules, slash commands, Linked Roles metadata, invite, and the #inbox and #announcements
+webhooks. Everything
 is matched by name, so rerunning updates the server in place instead of duplicating anything.
 
 The bot needs the Administrator permission while this runs, and its token is read from SSM.
@@ -257,6 +258,11 @@ def ensure_roles(api: Api) -> str:
     ensure_role(
         api, roles, "Speaker / Demo", {"color": 0xE3B23C, "hoist": False, "permissions": "0"}
     )
+    # Granted by Discord through Linked Roles once a member connects their
+    # account at https://www.fairfieldct.ai/connect/discord/. Discord's API
+    # can't set a role's Links requirement; add "fairfieldct.ai member" to it in
+    # Server Settings, Roles, Member, Links.
+    ensure_role(api, roles, "Member", {"color": 0x4CC3A5, "hoist": False, "permissions": "0"})
     return organizer
 
 
@@ -421,6 +427,25 @@ COMMANDS = [
 ]
 
 
+# Linked Roles metadata the site API sets on each member's role connection
+# (fairfieldai/site, crates/api/src/discord_link.rs). Type 7 is BOOLEAN_EQUAL.
+ROLE_CONNECTION_METADATA = [
+    {
+        "type": 7,
+        "key": "member",
+        "name": "fairfieldct.ai member",
+        "description": "Has a fairfieldct.ai account",
+    },
+]
+
+
+def register_role_connection_metadata(api: Api) -> None:
+    """Tell Discord which Linked Roles fields the application sets."""
+    path = f"/applications/{APPLICATION_ID}/role-connections/metadata"
+    describe = "register Linked Roles metadata (member)"
+    api.write("PUT", path, ROLE_CONNECTION_METADATA, describe=describe)
+
+
 def register_commands(api: Api) -> None:
     """Register the slash commands the Discord Lambda in fairfieldai/site handles."""
     names = ", ".join(f"/{command['name']}" for command in COMMANDS)
@@ -508,6 +533,7 @@ def setup(api: Api, output_dir: Path) -> None:
     post_rules(server, bot_id)
     ensure_automod(api)
     register_commands(api)
+    register_role_connection_metadata(api)
     print(f"invite: {ensure_invite(server, bot_id)}")
     for spec in WEBHOOKS:
         ensure_webhook(server, spec, output_dir)
