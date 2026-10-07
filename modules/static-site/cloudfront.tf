@@ -39,6 +39,18 @@ resource "aws_cloudfront_response_headers_policy" "security" {
       override        = true
     }
   }
+
+  dynamic "custom_headers_config" {
+    for_each = var.noindex ? [true] : []
+
+    content {
+      items {
+        header   = "X-Robots-Tag"
+        value    = "noindex, nofollow"
+        override = true
+      }
+    }
+  }
 }
 
 resource "aws_cloudfront_distribution" "site" {

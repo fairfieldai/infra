@@ -82,7 +82,7 @@ module "discord" {
 
   # Turn on after the site deploy ships the reminder code and the webhook
   # parameter exists (scripts/discord creates the webhook).
-  reminders_enabled = false
+  reminders_enabled = true
 
   deploy_role_name = data.aws_iam_role.deploy.name
 

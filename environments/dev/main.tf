@@ -6,6 +6,9 @@ module "site" {
   hosted_zone_id     = local.hosted_zone_id
   bucket_name_prefix = replace(local.site_domain_name, ".", "-")
 
+  # Dev serves the same build as prod; keep it out of search results.
+  noindex = true
+
   deploy_role_name = data.aws_iam_role.deploy.name
 
   tags = local.tags

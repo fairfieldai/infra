@@ -35,3 +35,9 @@ variable "deploy_role_name" {
   description = "IAM role granted permission to upload site content and invalidate the cache"
   type        = string
 }
+
+variable "noindex" {
+  description = "Send X-Robots-Tag: noindex on every response, so search engines don't index this copy of the site (e.g. dev)."
+  type        = bool
+  default     = false
+}
