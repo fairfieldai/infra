@@ -40,3 +40,6 @@ terraform.rc
 builds/
 __pycache__/
 .local/
+
+# Placeholder Lambda zip built by modules/api
+.build/

@@ -12,3 +12,8 @@ output "name_servers" {
   description = "Authoritative name servers to set at the domain registrar"
   value       = module.dns.name_servers
 }
+
+output "deploy_role_arns" {
+  description = "IAM roles the fairfieldai/site workflows assume, by GitHub Environment"
+  value       = module.github_oidc.role_arns
+}
