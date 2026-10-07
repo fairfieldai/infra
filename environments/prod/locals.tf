@@ -19,6 +19,11 @@ locals {
   auth_relying_party_id = "fairfieldct.ai"
   auth_site_origins     = ["https://www.fairfieldct.ai"]
 
+  # Discord application "fairfieldct.ai bot". Neither value is secret: the
+  # public key only verifies Discord's request signatures.
+  discord_application_id = "1557457463534686319"
+  discord_public_key     = "55552ff3778cf84fe7944063d46578b02a14ec4439abcdfe7a6a980c1d5bf07d"
+
   tags = {
     Application = "fairfieldct-ai"
     Environment = "prod"

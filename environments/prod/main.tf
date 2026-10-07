@@ -46,6 +46,7 @@ module "github_environment" {
     COGNITO_DOMAIN             = module.auth.domain_name
     COGNITO_CLIENT_ID          = module.auth.client_id
     COGNITO_ISSUER             = module.auth.issuer
+    DISCORD_FUNCTION_NAME      = module.discord.function_name
   }
 }
 
@@ -60,6 +61,20 @@ module "auth" {
   logout_urls        = [for origin in local.auth_site_origins : "${origin}/"]
   email_identity_arn = local.mail_identity_arn
   from_email_address = "\"fairfieldct.ai\" <${local.mail_from}>"
+
+  tags = local.tags
+}
+
+module "discord" {
+  source = "../../modules/discord"
+
+  name              = "fairfieldct-ai-prod"
+  api_id            = module.api.api_id
+  api_execution_arn = module.api.api_execution_arn
+  application_id    = local.discord_application_id
+  public_key        = local.discord_public_key
+
+  deploy_role_name = data.aws_iam_role.deploy.name
 
   tags = local.tags
 }
