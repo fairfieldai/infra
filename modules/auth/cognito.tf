@@ -88,8 +88,22 @@ resource "aws_cognito_user_pool_domain" "this" {
   managed_login_version = 2
 }
 
+# Styled to match the site: branding/settings.json is Cognito's default
+# settings document with the site's palette in light and dark mode, following
+# the browser's color scheme. Cognito picks the fonts.
 resource "aws_cognito_managed_login_branding" "web" {
-  user_pool_id                = aws_cognito_user_pool.this.id
-  client_id                   = aws_cognito_user_pool_client.web.id
-  use_cognito_provided_values = true
+  user_pool_id = aws_cognito_user_pool.this.id
+  client_id    = aws_cognito_user_pool_client.web.id
+  settings     = file("${path.module}/branding/settings.json")
+
+  dynamic "asset" {
+    for_each = setproduct(["FORM_LOGO", "FAVICON_SVG"], ["LIGHT", "DARK"])
+
+    content {
+      category   = asset.value[0]
+      color_mode = asset.value[1]
+      extension  = "SVG"
+      bytes      = filebase64("${path.module}/branding/logo.svg")
+    }
+  }
 }

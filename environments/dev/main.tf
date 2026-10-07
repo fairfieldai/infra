@@ -54,7 +54,7 @@ module "auth" {
   callback_urls      = [for origin in local.auth_site_origins : "${origin}/auth/callback/"]
   logout_urls        = [for origin in local.auth_site_origins : "${origin}/"]
   email_identity_arn = local.mail_identity_arn
-  from_email_address = "fairfieldct.ai <${local.mail_from}>"
+  from_email_address = "\"fairfieldct.ai\" <${local.mail_from}>"
 
   tags = local.tags
 }
