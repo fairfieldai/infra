@@ -84,7 +84,7 @@ def test_new_server_creates_roles_and_missing_channels(tmp_path):
     ds.setup(api, tmp_path)
 
     created = api.created()
-    assert {"Organizer", "Speaker / Demo"} <= set(created)
+    assert {"Organizer", "Speaker / Demo", "Member"} <= set(created)
     assert {"Start here", "Events", "Organizers", "announcements", "help-and-questions"} <= set(
         created
     )
@@ -118,7 +118,11 @@ def test_private_and_read_only_channels_get_overwrites(tmp_path):
 def test_configured_server_is_only_updated(tmp_path, capsys):
     api = FakeApi(
         channels=configured_server(),
-        roles=[{"id": "r1", "name": "Organizer"}, {"id": "r2", "name": "Speaker / Demo"}],
+        roles=[
+            {"id": "r1", "name": "Organizer"},
+            {"id": "r2", "name": "Speaker / Demo"},
+            {"id": "r3", "name": "Member"},
+        ],
         messages=[{"id": "m1", "author": {"id": BOT}, "content": ds.RULES_HEADING + "\nold"}],
         automod=[{"id": "a1", "trigger_type": 3}, {"id": "a2", "trigger_type": 4}],
         invites=[{"code": "keep", "inviter": {"id": BOT}, "max_age": 0, "max_uses": 0}],
@@ -254,3 +258,25 @@ def test_requests_authenticate_as_the_bot(monkeypatch):
     assert seen[0].get_header("Authorization") == "Bot abc"
     assert seen[0].get_method() == "PUT"
     assert json.loads(seen[0].data) == [1]
+
+
+def test_registers_linked_roles_metadata(tmp_path):
+    api = FakeApi(channels=configured_server())
+    ds.setup(api, tmp_path)
+    path = f"/applications/{ds.APPLICATION_ID}/role-connections/metadata"
+    metadata = next(b for m, p, b in api.writes if m == "PUT" and p == path)
+    assert metadata == [
+        {
+            "type": 7,
+            "key": "member",
+            "name": "fairfieldct.ai member",
+            "description": "Has a fairfieldct.ai account",
+        }
+    ]
+
+
+def test_member_role_has_no_permissions(tmp_path):
+    api = FakeApi(channels=configured_server())
+    ds.setup(api, tmp_path)
+    member = next(b for m, _, b in api.writes if m == "POST" and b.get("name") == "Member")
+    assert member["permissions"] == "0"
