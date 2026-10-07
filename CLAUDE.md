@@ -65,8 +65,12 @@ Apply `global` first: `dev` and `prod` look up its hosted zone with `data.aws_ro
 
 Each environment's `versions.tf` configures the S3 backend: bucket `terraform-state-401429382694-us-east-1-an` in us-east-1, key `<environment>/terraform.tfstate`, with `use_lockfile = true` for native S3 locking.
 
+### Discord server
+
+`scripts/discord/discord_setup.py` (a uv project with ruff, ty, and pytest configured in its `pyproject.toml`) is the source of truth for the Discord server's layout; there's no maintained Terraform provider. Each category and channel is a `ChannelSpec` in `CATEGORIES`/`CHANNELS`. Run it with `--dry-run` first. It never prints the `#inbox` webhook URL; a newly created one goes to an owner-only file for `aws ssm put-parameter`.
+
 ### CI
 
-`.github/workflows/ci.yml` runs on PRs targeting `main` and on `workflow_dispatch`: `terraform fmt -check`, credential-free `terraform validate` (`init -backend=false`) for every environment, and `tflint --recursive` using `.tflint.hcl`. CI does not plan or apply; apply is done locally.
+`.github/workflows/ci.yml` runs on PRs targeting `main` and on `workflow_dispatch`: `terraform fmt -check`, credential-free `terraform validate` (`init -backend=false`) for every environment, `tflint --recursive` using `.tflint.hcl`, and ruff, ty, and pytest for `scripts/discord`. CI does not plan or apply; apply is done locally.
 
 When adding an environment, add it to the `validate` matrix. GitHub Actions must be pinned to a commit SHA with a version comment, never a tag. The Terraform and TFLint versions are set in the workflow's `env` block.

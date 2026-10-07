@@ -95,6 +95,21 @@ aws cloudfront create-invalidation --paths '/*' \
   --distribution-id "$(terraform -chdir=environments/prod output -raw site_distribution_id)"
 ```
 
+## Discord server
+
+`scripts/discord/discord_setup.py` configures the fairfieldct.ai Discord server: roles,
+channels and permissions, server settings, the rules post, AutoMod, slash commands, the
+invite, and the `#inbox` webhook. It matches everything by name, so rerunning updates the
+server in place. It reads the bot token from SSM, and the bot needs the Administrator
+permission while it runs.
+
+```sh
+cd scripts/discord
+uv run python discord_setup.py --dry-run   # print the changes
+uv run python discord_setup.py             # apply them
+uv run pytest -q                           # tests
+```
+
 ## CI
 
 Pull requests to `main` run `.github/workflows/ci.yml`: `terraform fmt -check`,

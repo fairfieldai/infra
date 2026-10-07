@@ -43,3 +43,6 @@ __pycache__/
 
 # Placeholder Lambda zip built by modules/api
 .build/
+.venv/
+.pytest_cache/
+.ruff_cache/
