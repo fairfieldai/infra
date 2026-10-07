@@ -23,6 +23,7 @@ locals {
   # public key only verifies Discord's request signatures.
   discord_application_id = "1557457463534686319"
   discord_public_key     = "55552ff3778cf84fe7944063d46578b02a14ec4439abcdfe7a6a980c1d5bf07d"
+  discord_guild_id       = "1557456560488448190"
 
   tags = {
     Application = "fairfieldct-ai"

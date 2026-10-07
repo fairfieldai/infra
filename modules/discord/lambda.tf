@@ -38,9 +38,11 @@ resource "aws_lambda_function" "this" {
 
   environment {
     variables = {
-      DISCORD_APPLICATION_ID = var.application_id
-      DISCORD_PUBLIC_KEY     = var.public_key
-      RUST_LOG               = "info"
+      DISCORD_APPLICATION_ID      = var.application_id
+      DISCORD_PUBLIC_KEY          = var.public_key
+      DISCORD_GUILD_ID            = var.guild_id
+      DISCORD_BOT_TOKEN_PARAMETER = var.bot_token_parameter
+      RUST_LOG                    = "info"
     }
   }
 

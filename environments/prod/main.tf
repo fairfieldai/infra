@@ -38,15 +38,16 @@ module "github_environment" {
   reviewer_user_ids   = [49093]
 
   variables = {
-    AWS_ROLE_ARN               = data.aws_iam_role.deploy.arn
-    AWS_REGION                 = local.aws_region
-    S3_BUCKET                  = module.site.bucket_name
-    CLOUDFRONT_DISTRIBUTION_ID = module.site.distribution_id
-    LAMBDA_FUNCTION_NAME       = module.api.function_name
-    COGNITO_DOMAIN             = module.auth.domain_name
-    COGNITO_CLIENT_ID          = module.auth.client_id
-    COGNITO_ISSUER             = module.auth.issuer
-    DISCORD_FUNCTION_NAME      = module.discord.function_name
+    AWS_ROLE_ARN                    = data.aws_iam_role.deploy.arn
+    AWS_REGION                      = local.aws_region
+    S3_BUCKET                       = module.site.bucket_name
+    CLOUDFRONT_DISTRIBUTION_ID      = module.site.distribution_id
+    LAMBDA_FUNCTION_NAME            = module.api.function_name
+    COGNITO_DOMAIN                  = module.auth.domain_name
+    COGNITO_CLIENT_ID               = module.auth.client_id
+    COGNITO_ISSUER                  = module.auth.issuer
+    DISCORD_FUNCTION_NAME           = module.discord.function_name
+    DISCORD_REMINDERS_FUNCTION_NAME = module.discord.reminders_function_name
   }
 }
 
@@ -73,6 +74,15 @@ module "discord" {
   api_execution_arn = module.api.api_execution_arn
   application_id    = local.discord_application_id
   public_key        = local.discord_public_key
+  guild_id          = local.discord_guild_id
+
+  # Created outside Terraform so the values never land in state.
+  bot_token_parameter             = "/fairfieldct-ai/discord-bot-token"
+  announcements_webhook_parameter = "${local.ssm_parameter_path}/discord-announcements-webhook"
+
+  # Turn on after the site deploy ships the reminder code and the webhook
+  # parameter exists (scripts/discord creates the webhook).
+  reminders_enabled = false
 
   deploy_role_name = data.aws_iam_role.deploy.name
 
