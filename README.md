@@ -13,6 +13,7 @@ Terraform for the fairfieldct.ai AWS account (401429382694).
 - `modules/` — reusable modules called by the environments
   - `api` — HTTP API Gateway, Rust Lambda, DynamoDB table, and IAM role
   - `auth` — Cognito user pool, managed login domain, and app client
+  - `discord` — Lambda for Discord interactions and webhook events
   - `dns` — Route 53 public hosted zone
   - `github-environment` — GitHub Environment, deploy rules, and Actions variables
   - `github-oidc` — GitHub Actions OIDC provider and deploy roles

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Placeholder until the app repo deploys the Rust binary.
+echo "No application code deployed" >&2
+exit 1

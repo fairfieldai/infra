@@ -12,3 +12,13 @@ output "table_name" {
   description = "DynamoDB table name"
   value       = aws_dynamodb_table.this.name
 }
+
+output "api_id" {
+  description = "HTTP API ID, for attaching more routes"
+  value       = aws_apigatewayv2_api.this.id
+}
+
+output "api_execution_arn" {
+  description = "HTTP API execution ARN, for Lambda invoke permissions"
+  value       = aws_apigatewayv2_api.this.execution_arn
+}

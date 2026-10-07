@@ -42,3 +42,8 @@ output "cognito_client_id" {
   description = "Cognito app client ID for the site"
   value       = module.auth.client_id
 }
+
+output "discord_function_name" {
+  description = "Lambda function that handles Discord interactions and webhook events"
+  value       = module.discord.function_name
+}
