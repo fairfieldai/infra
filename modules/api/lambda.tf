@@ -52,6 +52,7 @@ resource "aws_lambda_function" "this" {
         DISCORD_APPLICATION_ID          = var.discord_linking.application_id
         DISCORD_REDIRECT_URI            = var.discord_linking.redirect_uri
         DISCORD_CLIENT_SECRET_PARAMETER = "${var.ssm_parameter_path}/discord-client-secret"
+        DISCORD_MANAGE_ROLE_CONNECTION  = tostring(var.discord_linking.manage_role_connection)
       },
     )
   }
