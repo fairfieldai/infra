@@ -100,8 +100,11 @@ aws cloudfront create-invalidation --paths '/*' \
 `scripts/discord/discord_setup.py` configures the fairfieldct.ai Discord server: roles,
 channels and permissions, server settings, the rules post, AutoMod, slash commands, the
 invite, and the `#inbox` webhook. It matches everything by name, so rerunning updates the
-server in place. It reads the bot token from SSM, and the bot needs the Administrator
-permission while it runs.
+server in place. It reads the bot token from SSM. The bot needs the Administrator
+permission while it runs, even with `--dry-run` (reading AutoMod rules requires it), so turn
+it on for the `fairfieldct.ai bot` role first and off again afterward. A newly created
+webhook's URL is written to an owner-only file with the `aws ssm put-parameter` command to
+store it.
 
 ```sh
 cd scripts/discord

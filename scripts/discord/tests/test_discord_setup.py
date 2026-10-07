@@ -122,14 +122,14 @@ def test_configured_server_is_only_updated(tmp_path, capsys):
         messages=[{"id": "m1", "author": {"id": BOT}, "content": ds.RULES_HEADING + "\nold"}],
         automod=[{"id": "a1", "trigger_type": 3}, {"id": "a2", "trigger_type": 4}],
         invites=[{"code": "keep", "inviter": {"id": BOT}, "max_age": 0, "max_uses": 0}],
-        webhooks=[{"name": "Inbox"}],
+        webhooks=[{"name": "Inbox"}, {"name": "fairfieldct.ai"}],
     )
     ds.setup(api, tmp_path)
 
     assert api.created() == []
     assert api.patched("/channels/rules/messages/m1")["content"].startswith(ds.RULES_HEADING)
     assert "invite: https://discord.gg/keep" in capsys.readouterr().out
-    assert not (tmp_path / "inbox-webhook-url").exists()
+    assert not list(tmp_path.glob("*-webhook-url"))
 
 
 def test_rules_post_from_someone_else_is_not_edited(tmp_path):
@@ -150,25 +150,39 @@ def test_rules_post_mentions_channels_and_policies():
     assert "https://www.fairfieldct.ai/privacy/" in post
 
 
-def test_new_webhook_url_goes_to_owner_only_file_and_is_never_printed(tmp_path, capsys):
+def test_new_webhook_urls_go_to_owner_only_files_and_are_never_printed(tmp_path, capsys):
     api = FakeApi(channels=configured_server())
     ds.setup(api, tmp_path)
-    path = tmp_path / "inbox-webhook-url"
-    assert path.read_text().endswith("/secret-token")
-    assert stat.S_IMODE(path.stat().st_mode) == ds.OWNER_ONLY
-    assert "secret-token" not in capsys.readouterr().out
+    for channel in ("inbox", "announcements"):
+        path = tmp_path / f"{channel}-webhook-url"
+        assert path.read_text().endswith("/secret-token"), channel
+        assert stat.S_IMODE(path.stat().st_mode) == ds.OWNER_ONLY
+    output = capsys.readouterr().out
+    assert "secret-token" not in output
+    assert "/fairfieldct-ai/prod/discord-announcements-webhook" in output
 
 
-def test_dry_run_writes_nothing_and_reports_changes(tmp_path, capsys, monkeypatch):
-    def refuse(*args, **kwargs):
-        raise AssertionError("dry run made a request")
+def test_announcements_webhook_posts_as_the_community_with_its_icon(tmp_path):
+    api = FakeApi(channels=configured_server())
+    ds.setup(api, tmp_path)
+    hooks = {p: b for m, p, b in api.writes if m == "POST" and p.endswith("/webhooks")}
+    assert hooks["/channels/announcements/webhooks"]["name"] == "fairfieldct.ai"
+    assert hooks["/channels/announcements/webhooks"]["avatar"].startswith("data:image/png;base64,")
+    assert "avatar" not in hooks["/channels/inbox/webhooks"]
 
-    monkeypatch.setattr(ds.urllib.request, "urlopen", refuse)
-    discord = ds.Discord("token", dry_run=True)
-    result = discord.write("POST", "/x", {"name": "inbox"}, describe="create #inbox")
-    assert result["id"] == "<inbox>"
-    assert ds.is_placeholder(result["id"])
-    assert capsys.readouterr().out == "would create #inbox\n"
+
+def test_only_the_missing_webhook_is_created(tmp_path):
+    api = FakeApi(channels=configured_server(), webhooks=[{"name": "Inbox"}])
+    ds.setup(api, tmp_path)
+    created = [p for m, p, _ in api.writes if m == "POST" and p.endswith("/webhooks")]
+    assert created == ["/channels/announcements/webhooks"]
+
+
+def test_registers_ping_and_meetup(tmp_path):
+    api = FakeApi(channels=configured_server())
+    ds.setup(api, tmp_path)
+    commands = next(b for m, _, b in api.writes if m == "PUT")
+    assert [c["name"] for c in commands] == ["ping", "meetup"]
 
 
 class DryRunApi(FakeApi):
@@ -187,7 +201,7 @@ def test_dry_run_on_a_new_server_skips_reads_of_channels_that_dont_exist(tmp_pat
     api = DryRunApi(channels=[], dry_run=True, guild={})
     ds.setup(api, tmp_path)
     assert api.created()
-    assert not (tmp_path / "inbox-webhook-url").exists()
+    assert not list(tmp_path.glob("*-webhook-url"))
 
 
 def http_error(code: int, body: dict[str, Any]) -> urllib.error.HTTPError:
