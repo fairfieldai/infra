@@ -1,5 +1,5 @@
-variable "repository" {
-  description = "GitHub repository allowed to assume the deploy roles, as owner/name"
+variable "subject_prefix" {
+  description = "Prefix of the GitHub OIDC sub claim for the repository allowed to assume the deploy roles, e.g. repo:owner@<owner-id>/name@<repo-id>"
   type        = string
 }
 
