@@ -49,3 +49,12 @@ variable "cognito_client_id" {
   description = "Cognito app client ID the API accepts access tokens from"
   type        = string
 }
+
+variable "discord_linking" {
+  description = "Discord application settings for linking Discord accounts to site accounts (Linked Roles). Leave null to turn linking off."
+  type = object({
+    application_id = string
+    redirect_uri   = string
+  })
+  default = null
+}

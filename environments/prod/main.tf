@@ -22,6 +22,12 @@ module "api" {
   cognito_issuer     = module.auth.issuer
   cognito_client_id  = module.auth.client_id
 
+  # Linked Roles: members connect their Discord account to their site account.
+  discord_linking = {
+    application_id = local.discord_application_id
+    redirect_uri   = "https://${local.site_domain_name}/connect/discord/callback/"
+  }
+
   deploy_role_name = data.aws_iam_role.deploy.name
 
   tags = local.tags
@@ -46,6 +52,7 @@ module "github_environment" {
     COGNITO_DOMAIN                  = module.auth.domain_name
     COGNITO_CLIENT_ID               = module.auth.client_id
     COGNITO_ISSUER                  = module.auth.issuer
+    DISCORD_CLIENT_ID               = local.discord_application_id
     DISCORD_FUNCTION_NAME           = module.discord.function_name
     DISCORD_REMINDERS_FUNCTION_NAME = module.discord.reminders_function_name
   }
@@ -76,13 +83,18 @@ module "discord" {
   public_key        = local.discord_public_key
   guild_id          = local.discord_guild_id
 
+  accounts_table = {
+    name = module.api.table_name
+    arn  = module.api.table_arn
+  }
+
   # Created outside Terraform so the values never land in state.
   bot_token_parameter             = "/fairfieldct-ai/discord-bot-token"
   announcements_webhook_parameter = "${local.ssm_parameter_path}/discord-announcements-webhook"
 
-  # Turn on after the site deploy ships the reminder code and the webhook
-  # parameter exists (scripts/discord creates the webhook).
-  reminders_enabled = false
+  # Needs the reminder code deployed and the webhook parameter in place
+  # (scripts/discord creates the webhook).
+  reminders_enabled = true
 
   deploy_role_name = data.aws_iam_role.deploy.name
 

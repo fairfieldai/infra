@@ -22,3 +22,8 @@ output "api_execution_arn" {
   description = "HTTP API execution ARN, for Lambda invoke permissions"
   value       = aws_apigatewayv2_api.this.execution_arn
 }
+
+output "table_arn" {
+  description = "DynamoDB table ARN"
+  value       = aws_dynamodb_table.this.arn
+}

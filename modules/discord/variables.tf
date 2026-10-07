@@ -76,3 +76,11 @@ variable "reminders_enabled" {
   type        = bool
   default     = false
 }
+
+variable "accounts_table" {
+  description = "The site API's DynamoDB table, where Discord account links are stored. The interactions function deletes a link when Discord reports the app was deauthorized."
+  type = object({
+    name = string
+    arn  = string
+  })
+}
