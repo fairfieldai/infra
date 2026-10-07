@@ -13,3 +13,8 @@ data "aws_route53_zone" "selected" {
 data "aws_iam_role" "deploy" {
   name = "fairfieldct-ai-prod-deploy"
 }
+
+# Created by environments/dev
+data "aws_dynamodb_table" "dev_api" {
+  name = "fairfieldct-ai-dev"
+}

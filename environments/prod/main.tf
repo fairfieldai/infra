@@ -26,6 +26,8 @@ module "api" {
   discord_linking = {
     application_id = local.discord_application_id
     redirect_uri   = "https://${local.site_domain_name}/connect/discord/callback/"
+    # Prod owns members' Linked Roles connection; dev only records links.
+    manage_role_connection = true
   }
 
   deploy_role_name = data.aws_iam_role.deploy.name
@@ -83,10 +85,12 @@ module "discord" {
   public_key        = local.discord_public_key
   guild_id          = local.discord_guild_id
 
-  accounts_table = {
-    name = module.api.table_name
-    arn  = module.api.table_arn
-  }
+  # Dev links the same Discord accounts but never receives Discord's webhook
+  # events, so prod removes deauthorized links from both tables.
+  accounts_tables = [
+    { name = module.api.table_name, arn = module.api.table_arn },
+    { name = data.aws_dynamodb_table.dev_api.name, arn = data.aws_dynamodb_table.dev_api.arn },
+  ]
 
   # Created outside Terraform so the values never land in state.
   bot_token_parameter             = "/fairfieldct-ai/discord-bot-token"

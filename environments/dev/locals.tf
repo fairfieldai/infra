@@ -19,6 +19,9 @@ locals {
   # localhost lets `pnpm dev` sign in against the dev user pool.
   auth_site_origins = ["https://dev.fairfieldct.ai", "http://localhost:3000"]
 
+  # Discord application "fairfieldct.ai bot", shared with prod.
+  discord_application_id = "1557457463534686319"
+
   tags = {
     Application = "fairfieldct-ai"
     Environment = "dev"
