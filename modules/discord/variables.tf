@@ -44,3 +44,35 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "guild_id" {
+  description = "Discord server (guild) ID the bot serves"
+  type        = string
+}
+
+variable "bot_token_parameter" {
+  description = "SecureString SSM parameter holding the bot token"
+  type        = string
+}
+
+variable "announcements_webhook_parameter" {
+  description = "SecureString SSM parameter holding the #announcements webhook URL that meetup reminders post to"
+  type        = string
+}
+
+variable "reminder_interval_minutes" {
+  description = "How often the meetup reminder job runs. Each run covers exactly one interval, so every reminder posts once."
+  type        = number
+  default     = 15
+
+  validation {
+    condition     = contains([5, 10, 15, 20, 30], var.reminder_interval_minutes)
+    error_message = "reminder_interval_minutes must divide an hour evenly: 5, 10, 15, 20, or 30."
+  }
+}
+
+variable "reminders_enabled" {
+  description = "Whether the reminder schedule runs. Enable once the reminder code is deployed and the webhook parameter exists."
+  type        = bool
+  default     = false
+}
