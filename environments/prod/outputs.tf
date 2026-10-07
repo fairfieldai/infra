@@ -32,3 +32,13 @@ output "api_table_name" {
   description = "DynamoDB table used by the API"
   value       = module.api.table_name
 }
+
+output "cognito_user_pool_id" {
+  description = "Cognito user pool ID"
+  value       = module.auth.user_pool_id
+}
+
+output "cognito_client_id" {
+  description = "Cognito app client ID for the site"
+  value       = module.auth.client_id
+}
