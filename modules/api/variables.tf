@@ -51,10 +51,15 @@ variable "cognito_client_id" {
 }
 
 variable "discord_linking" {
-  description = "Discord application settings for linking Discord accounts to site accounts (Linked Roles). Leave null to turn linking off."
+  description = <<-EOT
+    Discord application settings for linking Discord accounts to site accounts. Leave null to turn
+    linking off. Only one environment may manage the role connection (Linked Roles), because Discord
+    keeps a single role connection per user per application; the others only record the link.
+  EOT
   type = object({
-    application_id = string
-    redirect_uri   = string
+    application_id         = string
+    redirect_uri           = string
+    manage_role_connection = bool
   })
   default = null
 }

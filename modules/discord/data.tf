@@ -42,7 +42,7 @@ data "aws_iam_policy_document" "lambda" {
   statement {
     sid       = "RemoveAccountLinks"
     actions   = ["dynamodb:GetItem", "dynamodb:DeleteItem", "dynamodb:ConditionCheckItem"]
-    resources = [var.accounts_table.arn]
+    resources = [for table in var.accounts_tables : table.arn]
   }
 }
 

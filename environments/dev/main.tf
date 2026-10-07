@@ -21,6 +21,14 @@ module "api" {
   cognito_issuer     = module.auth.issuer
   cognito_client_id  = module.auth.client_id
 
+  # Dev shares prod's Discord application, so it records links but leaves the
+  # Linked Roles connection to prod.
+  discord_linking = {
+    application_id         = local.discord_application_id
+    redirect_uri           = "https://${local.site_domain_name}/connect/discord/callback/"
+    manage_role_connection = false
+  }
+
   deploy_role_name = data.aws_iam_role.deploy.name
 
   tags = local.tags
@@ -41,6 +49,7 @@ module "github_environment" {
     COGNITO_DOMAIN             = module.auth.domain_name
     COGNITO_CLIENT_ID          = module.auth.client_id
     COGNITO_ISSUER             = module.auth.issuer
+    DISCORD_CLIENT_ID          = local.discord_application_id
   }
 }
 
