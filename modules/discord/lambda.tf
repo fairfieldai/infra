@@ -42,6 +42,7 @@ resource "aws_lambda_function" "this" {
       DISCORD_PUBLIC_KEY          = var.public_key
       DISCORD_GUILD_ID            = var.guild_id
       DISCORD_BOT_TOKEN_PARAMETER = var.bot_token_parameter
+      TABLE_NAME                  = var.accounts_table.name
       RUST_LOG                    = "info"
     }
   }

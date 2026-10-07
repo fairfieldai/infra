@@ -35,16 +35,25 @@ resource "aws_lambda_function" "this" {
   source_code_hash = data.archive_file.placeholder.output_base64sha256
 
   environment {
-    variables = {
-      TABLE_NAME             = aws_dynamodb_table.this.name
-      SSM_PARAMETER_PATH     = var.ssm_parameter_path
-      MAIL_API_BASE_URL      = data.aws_cloudformation_stack.inbox.outputs["ApiBaseUrl"]
-      MAIL_API_KEY_PARAMETER = "${var.ssm_parameter_path}/mail-api-key"
-      MAIL_FROM              = var.mail_from
-      COGNITO_ISSUER         = var.cognito_issuer
-      COGNITO_CLIENT_ID      = var.cognito_client_id
-      RUST_LOG               = "info"
-    }
+    variables = merge(
+      {
+        TABLE_NAME             = aws_dynamodb_table.this.name
+        SSM_PARAMETER_PATH     = var.ssm_parameter_path
+        MAIL_API_BASE_URL      = data.aws_cloudformation_stack.inbox.outputs["ApiBaseUrl"]
+        MAIL_API_KEY_PARAMETER = "${var.ssm_parameter_path}/mail-api-key"
+        MAIL_FROM              = var.mail_from
+        COGNITO_ISSUER         = var.cognito_issuer
+        COGNITO_CLIENT_ID      = var.cognito_client_id
+        RUST_LOG               = "info"
+      },
+      # The client secret lives under ssm_parameter_path, which the function
+      # can already read.
+      var.discord_linking == null ? {} : {
+        DISCORD_APPLICATION_ID          = var.discord_linking.application_id
+        DISCORD_REDIRECT_URI            = var.discord_linking.redirect_uri
+        DISCORD_CLIENT_SECRET_PARAMETER = "${var.ssm_parameter_path}/discord-client-secret"
+      },
+    )
   }
 
   logging_config {

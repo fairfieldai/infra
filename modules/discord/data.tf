@@ -37,6 +37,13 @@ data "aws_iam_policy_document" "lambda" {
     actions   = ["ssm:GetParameter"]
     resources = [local.bot_token_arn]
   }
+
+  # Look up and delete Discord account links when a member deauthorizes the app.
+  statement {
+    sid       = "RemoveAccountLinks"
+    actions   = ["dynamodb:GetItem", "dynamodb:DeleteItem", "dynamodb:ConditionCheckItem"]
+    resources = [var.accounts_table.arn]
+  }
 }
 
 data "aws_iam_policy_document" "reminders" {
