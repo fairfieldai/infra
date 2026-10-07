@@ -67,7 +67,7 @@ Each environment's `versions.tf` configures the S3 backend: bucket `terraform-st
 
 ### Discord server
 
-`scripts/discord/discord_setup.py` (a uv project with ruff, ty, and pytest configured in its `pyproject.toml`) is the source of truth for the Discord server's layout; there's no maintained Terraform provider. Each category and channel is a `ChannelSpec` in `CATEGORIES`/`CHANNELS`. Run it with `--dry-run` first. It never prints the `#inbox` webhook URL; a newly created one goes to an owner-only file for `aws ssm put-parameter`.
+`scripts/discord/discord_setup.py` (a uv project with ruff, ty, and pytest configured in its `pyproject.toml`) is the source of truth for the Discord server's layout; there's no maintained Terraform provider. Each category and channel is a `ChannelSpec` in `CATEGORIES`/`CHANNELS`. Run it with `--dry-run` first. It registers `/ping` and `/meetup` (`COMMANDS`) and ensures the `#inbox` and `#announcements` webhooks (`WEBHOOKS`). It never prints webhook URLs; a newly created one goes to an owner-only `<channel>-webhook-url` file for `aws ssm put-parameter`. The bot needs Administrator while it runs, even for `--dry-run`.
 
 ### CI
 

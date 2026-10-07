@@ -1,8 +1,8 @@
 """Configure the fairfieldct.ai Discord server.
 
 Creates or updates the roles, categories, channels, permissions, server settings, rules post,
-AutoMod rules, slash commands, invite, and #inbox webhook. Everything is matched by name, so
-rerunning updates the server in place instead of duplicating anything.
+AutoMod rules, slash commands, invite, and the #inbox and #announcements webhooks. Everything
+is matched by name, so rerunning updates the server in place instead of duplicating anything.
 
 The bot needs the Administrator permission while this runs, and its token is read from SSM.
 With --dry-run, nothing changes; each create or update is printed instead.
@@ -23,7 +23,6 @@ from typing import Any, Protocol
 GUILD_ID = "1557456560488448190"
 APPLICATION_ID = "1557457463534686319"
 TOKEN_PARAMETER = "/fairfieldct-ai/discord-bot-token"
-WEBHOOK_PARAMETER = "/fairfieldct-ai/prod/discord-inbox-webhook"
 AWS_PROFILE = "fairfieldct-ai-admin"
 AWS_REGION = "us-east-1"
 ICON = Path(__file__).parent / "icon.png"
@@ -416,14 +415,17 @@ def ensure_automod(api: Api) -> None:
             api.write("POST", path, body, describe=f"create AutoMod rule {name}")
 
 
+COMMANDS = [
+    {"name": "ping", "description": "Check that the fairfieldct.ai bot is listening", "type": 1},
+    {"name": "meetup", "description": "Show the next fairfieldct.ai meetup", "type": 1},
+]
+
+
 def register_commands(api: Api) -> None:
     """Register the slash commands the Discord Lambda in fairfieldai/site handles."""
-    commands = [
-        {"name": "ping", "description": "Check that the fairfieldct.ai bot is listening", "type": 1}
-    ]
-    api.write(
-        "PUT", f"/applications/{APPLICATION_ID}/commands", commands, describe="register /ping"
-    )
+    names = ", ".join(f"/{command['name']}" for command in COMMANDS)
+    path = f"/applications/{APPLICATION_ID}/commands"
+    api.write("PUT", path, COMMANDS, describe=f"register {names}")
 
 
 def ensure_invite(server: Server, bot_id: str) -> str:
@@ -441,29 +443,54 @@ def ensure_invite(server: Server, bot_id: str) -> str:
     return f"https://discord.gg/{invite['code']}"
 
 
-def ensure_webhook(server: Server, output_dir: Path) -> None:
-    """Create the #inbox webhook if it's missing, saving its URL to an owner-only file.
+@dataclass(frozen=True)
+class WebhookSpec:
+    """A webhook the Lambdas post through, and the SSM parameter that holds its URL."""
+
+    channel: str
+    name: str
+    parameter: str
+    avatar: bool = False
+
+
+WEBHOOKS = [
+    WebhookSpec("inbox", "Inbox", "/fairfieldct-ai/prod/discord-inbox-webhook"),
+    # Meetup announcements and reminders appear to come from the community.
+    WebhookSpec(
+        "announcements",
+        "fairfieldct.ai",
+        "/fairfieldct-ai/prod/discord-announcements-webhook",
+        avatar=True,
+    ),
+]
+
+
+def ensure_webhook(server: Server, spec: WebhookSpec, output_dir: Path) -> None:
+    """Create a webhook if it's missing, saving its URL to an owner-only file.
 
     The URL is a credential, so it's never printed.
     """
-    inbox = server.ids["inbox"]
-    hooks = [] if is_placeholder(inbox) else server.api.get(f"/channels/{inbox}/webhooks")
-    if any(h["name"] == "Inbox" for h in hooks):
-        print(f"#inbox webhook exists; its URL belongs in {WEBHOOK_PARAMETER}")
+    channel = server.ids[spec.channel]
+    hooks = [] if is_placeholder(channel) else server.api.get(f"/channels/{channel}/webhooks")
+    if any(h["name"] == spec.name for h in hooks):
+        print(f"#{spec.channel} webhook exists; its URL belongs in {spec.parameter}")
         return
-    hook = server.api.write(
-        "POST", f"/channels/{inbox}/webhooks", {"name": "Inbox"}, describe="create #inbox webhook"
-    )
+    body = {"name": spec.name}
+    if spec.avatar:
+        body["avatar"] = f"data:image/png;base64,{base64.b64encode(ICON.read_bytes()).decode()}"
+    describe = f"create #{spec.channel} webhook"
+    hook = server.api.write("POST", f"/channels/{channel}/webhooks", body, describe=describe)
     if server.api.dry_run:
         return
-    path = output_dir / "inbox-webhook-url"
+    path = output_dir / f"{spec.channel}-webhook-url"
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, OWNER_ONLY)
     with os.fdopen(fd, "w") as f:
         f.write(f"https://discord.com/api/webhooks/{hook['id']}/{hook['token']}")
     print(
-        f"saved the webhook URL to {path} (owner-only). Store it, then delete the file:\n"
+        f"saved the #{spec.channel} webhook URL to {path} (owner-only). "
+        "Store it, then delete the file:\n"
         f"  aws ssm put-parameter --profile {AWS_PROFILE} --region {AWS_REGION} "
-        f"--type SecureString --overwrite --name {WEBHOOK_PARAMETER} --value file://{path}"
+        f"--type SecureString --overwrite --name {spec.parameter} --value file://{path}"
     )
 
 
@@ -482,7 +509,8 @@ def setup(api: Api, output_dir: Path) -> None:
     ensure_automod(api)
     register_commands(api)
     print(f"invite: {ensure_invite(server, bot_id)}")
-    ensure_webhook(server, output_dir)
+    for spec in WEBHOOKS:
+        ensure_webhook(server, spec, output_dir)
 
 
 def ssm_parameter(name: str) -> str:
