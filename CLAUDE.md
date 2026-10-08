@@ -12,6 +12,9 @@ make validate              # terraform validate (runs fmt first)
 make lint                  # tflint across all environments and modules
 make plan                  # terraform plan (runs validate first)
 make apply                 # terraform apply
+make discord-plan          # Discord server setup, dry run
+make discord-apply         # Discord server setup
+make discord-check         # ruff, ty, and pytest for scripts/discord
 make refresh               # terraform refresh
 ```
 

@@ -46,3 +46,6 @@ __pycache__/
 .venv/
 .pytest_cache/
 .ruff_cache/
+
+# Discord webhook URLs written by scripts/discord before they're stored in SSM
+*-webhook-url

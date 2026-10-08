@@ -1,7 +1,7 @@
 ENV ?= global
 DIR = environments/$(ENV)
 
-.PHONY: init fmt reconfigure validate lint plan apply refresh destroy
+.PHONY: init fmt reconfigure validate lint plan apply refresh destroy discord-plan discord-apply discord-check
 
 init:
 	cd $(DIR) && terraform init -upgrade
@@ -30,3 +30,19 @@ refresh:
 
 destroy:
 	cd $(DIR) && terraform destroy
+
+# Discord server setup (scripts/discord). The bot needs the Administrator
+# permission while these run, even for discord-plan.
+DISCORD = cd scripts/discord && uv run --locked
+
+discord-plan:
+	$(DISCORD) python discord_setup.py --dry-run
+
+discord-apply:
+	$(DISCORD) python discord_setup.py
+
+discord-check:
+	$(DISCORD) ruff format --check
+	$(DISCORD) ruff check
+	$(DISCORD) ty check
+	$(DISCORD) pytest -q

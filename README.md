@@ -107,10 +107,9 @@ webhook's URL is written to an owner-only file with the `aws ssm put-parameter` 
 store it.
 
 ```sh
-cd scripts/discord
-uv run python discord_setup.py --dry-run   # print the changes
-uv run python discord_setup.py             # apply them
-uv run pytest -q                           # tests
+make discord-plan    # print the changes
+make discord-apply   # apply them
+make discord-check   # ruff, ty, and pytest
 ```
 
 ## CI
