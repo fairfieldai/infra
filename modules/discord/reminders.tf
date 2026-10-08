@@ -1,6 +1,7 @@
-# Posts meetup announcements and reminders to #announcements. Discord's
-# scheduled events are the source of truth; each run covers one interval ending
-# at its scheduled time, so a reminder is posted once without stored state.
+# Copies meetups from Discord's scheduled events into each site's table, emails
+# members, and posts announcements and reminders to #announcements. Each run
+# covers one interval ending at its scheduled time, so a reminder is posted once
+# without stored state; emails carry idempotency keys for retries.
 resource "aws_iam_role" "reminders" {
   name               = "${var.name}-discord-reminders"
   assume_role_policy = data.aws_iam_policy_document.assume_lambda.json
@@ -32,19 +33,31 @@ resource "aws_lambda_function" "reminders" {
   handler       = "bootstrap"
   architectures = ["arm64"]
   memory_size   = 256
-  timeout       = 30
+  # Emails go out one at a time.
+  timeout = 300
 
   filename         = data.archive_file.placeholder.output_path
   source_code_hash = data.archive_file.placeholder.output_base64sha256
 
   environment {
-    variables = {
-      DISCORD_GUILD_ID                        = var.guild_id
-      DISCORD_BOT_TOKEN_PARAMETER             = var.bot_token_parameter
-      DISCORD_ANNOUNCEMENTS_WEBHOOK_PARAMETER = var.announcements_webhook_parameter
-      REMINDER_INTERVAL_MINUTES               = tostring(var.reminder_interval_minutes)
-      RUST_LOG                                = "info"
-    }
+    variables = merge(
+      {
+        DISCORD_GUILD_ID                        = var.guild_id
+        DISCORD_BOT_TOKEN_PARAMETER             = var.bot_token_parameter
+        DISCORD_ANNOUNCEMENTS_WEBHOOK_PARAMETER = var.announcements_webhook_parameter
+        REMINDER_INTERVAL_MINUTES               = tostring(var.reminder_interval_minutes)
+        TABLE_NAMES                             = join(",", [for table in var.site_tables : table.name])
+        RUST_LOG                                = "info"
+      },
+      var.email == null ? {} : {
+        EMAIL_TABLE_NAME       = var.email.table_name
+        COGNITO_USER_POOL_ID   = var.email.user_pool_id
+        MAIL_API_BASE_URL      = var.email.mail_api_base_url
+        MAIL_API_KEY_PARAMETER = var.email.mail_api_key_parameter
+        MAIL_FROM              = var.email.mail_from
+        SITE_URL               = var.email.site_url
+      },
+    )
   }
 
   logging_config {

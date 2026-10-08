@@ -42,6 +42,7 @@ resource "aws_lambda_function" "this" {
         MAIL_API_BASE_URL      = data.aws_cloudformation_stack.inbox.outputs["ApiBaseUrl"]
         MAIL_API_KEY_PARAMETER = "${var.ssm_parameter_path}/mail-api-key"
         MAIL_FROM              = var.mail_from
+        SITE_URL               = var.site_url
         COGNITO_ISSUER         = var.cognito_issuer
         COGNITO_CLIENT_ID      = var.cognito_client_id
         RUST_LOG               = "info"

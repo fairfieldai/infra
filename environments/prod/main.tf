@@ -21,6 +21,7 @@ module "api" {
   mail_from          = local.mail_from
   cognito_issuer     = module.auth.issuer
   cognito_client_id  = module.auth.client_id
+  site_url           = "https://${local.site_domain_name}"
 
   # Linked Roles: members connect their Discord account to their site account.
   discord_linking = {
@@ -86,11 +87,23 @@ module "discord" {
   guild_id          = local.discord_guild_id
 
   # Dev links the same Discord accounts but never receives Discord's webhook
-  # events, so prod removes deauthorized links from both tables.
-  accounts_tables = [
+  # events, so prod removes deauthorized links from both tables. The reminder
+  # function also copies meetups into both, so dev shows the same events.
+  site_tables = [
     { name = module.api.table_name, arn = module.api.table_arn },
     { name = data.aws_dynamodb_table.dev_api.name, arn = data.aws_dynamodb_table.dev_api.arn },
   ]
+
+  # Only prod emails its members.
+  email = {
+    table_name             = module.api.table_name
+    user_pool_id           = module.auth.user_pool_id
+    user_pool_arn          = module.auth.user_pool_arn
+    mail_api_base_url      = module.api.mail_api_base_url
+    mail_api_key_parameter = module.api.mail_api_key_parameter
+    mail_from              = local.mail_from
+    site_url               = "https://${local.site_domain_name}"
+  }
 
   # Created outside Terraform so the values never land in state.
   bot_token_parameter             = "/fairfieldct-ai/discord-bot-token"

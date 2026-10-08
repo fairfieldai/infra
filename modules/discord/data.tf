@@ -42,7 +42,7 @@ data "aws_iam_policy_document" "lambda" {
   statement {
     sid       = "RemoveAccountLinks"
     actions   = ["dynamodb:GetItem", "dynamodb:DeleteItem", "dynamodb:ConditionCheckItem"]
-    resources = [for table in var.accounts_tables : table.arn]
+    resources = [for table in var.site_tables : table.arn]
   }
 }
 
@@ -57,6 +57,31 @@ data "aws_iam_policy_document" "reminders" {
     sid       = "ReadBotTokenAndWebhook"
     actions   = ["ssm:GetParameter"]
     resources = [local.bot_token_arn, local.webhook_arn]
+  }
+
+  # Copy meetups into each site's table, and read RSVPs and subscribers.
+  statement {
+    sid       = "SyncEvents"
+    actions   = ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:UpdateItem"]
+    resources = [for table in var.site_tables : table.arn]
+  }
+
+  dynamic "statement" {
+    for_each = var.email == null ? [] : [var.email]
+    content {
+      sid       = "LookUpMemberEmail"
+      actions   = ["cognito-idp:AdminGetUser"]
+      resources = [statement.value.user_pool_arn]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.email == null ? [] : [var.email]
+    content {
+      sid       = "ReadMailApiKey"
+      actions   = ["ssm:GetParameter"]
+      resources = ["${local.parameter_arn_prefix}${statement.value.mail_api_key_parameter}"]
+    }
   }
 }
 

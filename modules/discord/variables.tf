@@ -77,10 +77,33 @@ variable "reminders_enabled" {
   default     = false
 }
 
-variable "accounts_tables" {
-  description = "DynamoDB tables holding Discord account links (the site API's, in every environment that links accounts). When Discord reports the app was deauthorized, the interactions function removes that Discord account's link from each."
+variable "site_tables" {
+  description = "The site API's DynamoDB table in every environment. The reminder function copies Discord's meetups into each, and when Discord reports the app was deauthorized, the interactions function removes that Discord account's link from each."
   type = list(object({
     name = string
     arn  = string
   }))
+}
+
+variable "email" {
+  description = <<-EOT
+    Meetup emails to one site's members: announcements to subscribers, and reminders and
+    cancellations to members who RSVP'd. table_name must be one of site_tables. The function looks
+    up addresses in the user pool and sends through the mailbox API. Leave null to send none.
+  EOT
+  type = object({
+    table_name             = string
+    user_pool_id           = string
+    user_pool_arn          = string
+    mail_api_base_url      = string
+    mail_api_key_parameter = string
+    mail_from              = string
+    site_url               = string
+  })
+  default = null
+
+  validation {
+    condition     = var.email == null || contains([for table in var.site_tables : table.name], try(var.email.table_name, ""))
+    error_message = "email.table_name must be one of site_tables."
+  }
 }
