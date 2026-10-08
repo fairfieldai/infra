@@ -3,6 +3,11 @@ output "user_pool_id" {
   value       = aws_cognito_user_pool.this.id
 }
 
+output "user_pool_arn" {
+  description = "Cognito user pool ARN, for IAM policies"
+  value       = aws_cognito_user_pool.this.arn
+}
+
 output "issuer" {
   description = "Issuer URL of the user pool's tokens"
   value       = "https://cognito-idp.${data.aws_region.current.region}.amazonaws.com/${aws_cognito_user_pool.this.id}"

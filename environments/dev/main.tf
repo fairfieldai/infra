@@ -20,6 +20,7 @@ module "api" {
   mail_from          = local.mail_from
   cognito_issuer     = module.auth.issuer
   cognito_client_id  = module.auth.client_id
+  site_url           = "https://${local.site_domain_name}"
 
   # Dev shares prod's Discord application, so it records links but leaves the
   # Linked Roles connection to prod.

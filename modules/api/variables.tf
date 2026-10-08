@@ -40,6 +40,16 @@ variable "deploy_role_name" {
   type        = string
 }
 
+variable "site_url" {
+  description = "The site's origin, e.g. https://www.fairfieldct.ai, for absolute links such as those in the meetup calendar feed"
+  type        = string
+
+  validation {
+    condition     = can(regex("^https://[a-z0-9.-]+$", var.site_url))
+    error_message = "site_url must be an https origin with no path or trailing slash."
+  }
+}
+
 variable "cognito_issuer" {
   description = "Issuer URL of the Cognito user pool whose access tokens the API accepts"
   type        = string
