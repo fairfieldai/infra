@@ -31,8 +31,8 @@ refresh:
 destroy:
 	cd $(DIR) && terraform destroy
 
-# Discord server setup (scripts/discord). The bot needs the Administrator
-# permission while these run, even for discord-plan.
+# Discord AutoMod, slash commands, and Linked Roles metadata (scripts/discord).
+# The server layout itself is the discord environment: make plan ENV=discord.
 DISCORD = cd scripts/discord && uv run --locked
 
 discord-plan:

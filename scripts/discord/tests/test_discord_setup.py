@@ -1,7 +1,6 @@
 import email.message
 import io
 import json
-import stat
 import urllib.error
 from typing import Any
 
@@ -9,203 +8,76 @@ import pytest
 
 import discord_setup as ds
 
-BOT = "bot-1"
-
 
 class FakeApi:
     """In-memory stand-in for the Discord API that records every write."""
 
-    def __init__(self, *, channels: list[dict[str, Any]], dry_run: bool = False, **state: Any):
-        self.dry_run = dry_run
+    def __init__(self, *, automod: list[dict[str, Any]] | None = None):
+        self.dry_run = False
         self.writes: list[tuple[str, str, Any]] = []
-        self.next_id = 100
-        self.state = {
-            "guild": {"rules_channel_id": "rules", "public_updates_channel_id": "mods"},
-            "channels": channels,
-            "roles": [],
-            "messages": [],
-            "automod": [],
-            "invites": [],
-            "webhooks": [],
-            **state,
-        }
+        self.automod = automod or []
 
     def get(self, path: str) -> Any:
-        routes = {
-            f"/guilds/{ds.GUILD_ID}": "guild",
-            f"/guilds/{ds.GUILD_ID}/channels": "channels",
-            f"/guilds/{ds.GUILD_ID}/roles": "roles",
-            f"/guilds/{ds.GUILD_ID}/auto-moderation/rules": "automod",
-            f"/guilds/{ds.GUILD_ID}/invites": "invites",
-        }
-        if path == "/users/@me":
-            return {"id": BOT}
-        if path.endswith("/messages?limit=50"):
-            return self.state["messages"]
-        if path.endswith("/webhooks"):
-            return self.state["webhooks"]
-        return self.state[routes[path]]
+        assert path == f"/guilds/{ds.GUILD_ID}/auto-moderation/rules"
+        return self.automod
 
     def write(self, method: str, path: str, body: Any, *, describe: str) -> Any:
         self.writes.append((method, path, body))
-        self.next_id += 1
-        return {"id": str(self.next_id), "code": "abc", "token": "secret-token"}
-
-    def created(self) -> list[str]:
-        return [b.get("name", "") for m, _, b in self.writes if m == "POST" and isinstance(b, dict)]
-
-    def patched(self, path: str) -> Any:
-        return next(b for m, p, b in self.writes if m == "PATCH" and p == path)
+        return {"id": "new"}
 
 
-def channel(cid: str, name: str, kind: int = ds.TEXT) -> dict[str, Any]:
-    return {"id": cid, "name": name, "type": kind}
+AUTOMOD = f"/guilds/{ds.GUILD_ID}/auto-moderation/rules"
 
 
-DEFAULT_SERVER = [
-    channel("text-cat", "Text Channels", ds.CATEGORY),
-    channel("voice-cat", "Voice Channels", ds.CATEGORY),
-    channel("general", "general"),
-    channel("rules", "rules"),
-    channel("mods", "moderator-only"),
-]
+def test_missing_automod_rules_are_created():
+    api = FakeApi(automod=[{"id": "default", "trigger_type": 5}])
+    ds.setup(api)
+    created = [b for m, p, b in api.writes if m == "POST" and p == AUTOMOD]
+    assert [r["trigger_type"] for r in created] == [3, 4]
+    assert created[1]["trigger_metadata"] == {"presets": [2, 3]}
+    assert all(r["actions"][0]["type"] == 1 and r["enabled"] for r in created)
 
 
-def configured_server() -> list[dict[str, Any]]:
-    specs = ds.CATEGORIES + ds.CHANNELS
-    found = {"welcome-and-rules": "rules", "moderator-only": "mods"}
-    return [channel(found.get(s.name, s.name), s.name, s.kind) for s in specs] + [
-        channel("voice-cat", "Voice Channels", ds.CATEGORY)
-    ]
+def test_existing_automod_rules_are_updated_in_place():
+    api = FakeApi(automod=[{"id": "a1", "trigger_type": 3}, {"id": "a2", "trigger_type": 4}])
+    ds.setup(api)
+    automod = [(m, p) for m, p, _ in api.writes if p.startswith(AUTOMOD)]
+    assert automod == [("PATCH", f"{AUTOMOD}/a1"), ("PATCH", f"{AUTOMOD}/a2")]
+    patched = next(b for m, p, b in api.writes if p == f"{AUTOMOD}/a1")
+    assert "trigger_type" not in patched
 
 
-def test_new_server_creates_roles_and_missing_channels(tmp_path):
-    api = FakeApi(channels=list(DEFAULT_SERVER))
-    ds.setup(api, tmp_path)
-
-    created = api.created()
-    assert {"Organizer", "Speaker / Demo", "Member"} <= set(created)
-    assert {"Start here", "Events", "Organizers", "announcements", "help-and-questions"} <= set(
-        created
-    )
-    # Existing channels are reused, not recreated.
-    assert not {"Community", "general", "welcome-and-rules", "moderator-only"} & set(created)
-    assert api.patched("/channels/text-cat")["name"] == "Community"
-    assert api.patched("/channels/rules")["name"] == "welcome-and-rules"
-    assert api.patched("/channels/mods")["name"] == "moderator-only"
-
-
-def test_forum_and_announcement_channels_have_the_right_types(tmp_path):
-    api = FakeApi(channels=list(DEFAULT_SERVER))
-    ds.setup(api, tmp_path)
-    bodies = {b["name"]: b for m, _, b in api.writes if m == "POST" and "name" in b}
-    assert bodies["help-and-questions"]["type"] == ds.FORUM
-    assert bodies["help-and-questions"]["default_forum_layout"] == 1
-    assert bodies["announcements"]["type"] == ds.ANNOUNCEMENT
-
-
-def test_private_and_read_only_channels_get_overwrites(tmp_path):
-    api = FakeApi(channels=configured_server())
-    ds.setup(api, tmp_path)
-    inbox = api.patched("/channels/inbox")["permission_overwrites"]
-    assert {"id": ds.GUILD_ID, "type": 0, "allow": "0", "deny": str(ds.VIEW_CHANNEL)} in inbox
-    rules = api.patched("/channels/rules")["permission_overwrites"]
-    everyone = next(o for o in rules if o["id"] == ds.GUILD_ID)
-    assert int(everyone["deny"]) & ds.SEND_MESSAGES
-    assert "permission_overwrites" not in api.patched("/channels/general")
-
-
-def test_configured_server_is_only_updated(tmp_path, capsys):
-    api = FakeApi(
-        channels=configured_server(),
-        roles=[
-            {"id": "r1", "name": "Organizer"},
-            {"id": "r2", "name": "Speaker / Demo"},
-            {"id": "r3", "name": "Member"},
-        ],
-        messages=[{"id": "m1", "author": {"id": BOT}, "content": ds.RULES_HEADING + "\nold"}],
-        automod=[{"id": "a1", "trigger_type": 3}, {"id": "a2", "trigger_type": 4}],
-        invites=[{"code": "keep", "inviter": {"id": BOT}, "max_age": 0, "max_uses": 0}],
-        webhooks=[{"name": "Inbox"}, {"name": "fairfieldct.ai"}],
-    )
-    ds.setup(api, tmp_path)
-
-    assert api.created() == []
-    assert api.patched("/channels/rules/messages/m1")["content"].startswith(ds.RULES_HEADING)
-    assert "invite: https://discord.gg/keep" in capsys.readouterr().out
-    assert not list(tmp_path.glob("*-webhook-url"))
-
-
-def test_rules_post_from_someone_else_is_not_edited(tmp_path):
-    api = FakeApi(
-        channels=configured_server(),
-        messages=[{"id": "m1", "author": {"id": "human"}, "content": ds.RULES_HEADING}],
-    )
-    ds.setup(api, tmp_path)
-    assert any(m == "POST" and p == "/channels/rules/messages" for m, p, _ in api.writes)
-
-
-def test_rules_post_mentions_channels_and_policies():
-    ids = {n: f"id-{n}" for n in ("introductions", "show-and-tell", "help-and-questions")}
-    post = ds.rules_post({**ids, "announcements": "id-announcements"})
-    assert post.startswith(ds.RULES_HEADING)
-    assert "<#id-introductions>" in post
-    assert "https://www.fairfieldct.ai/terms/" in post
-    assert "https://www.fairfieldct.ai/privacy/" in post
-
-
-def test_new_webhook_urls_go_to_owner_only_files_and_are_never_printed(tmp_path, capsys):
-    api = FakeApi(channels=configured_server())
-    ds.setup(api, tmp_path)
-    for channel in ("inbox", "announcements"):
-        path = tmp_path / f"{channel}-webhook-url"
-        assert path.read_text().endswith("/secret-token"), channel
-        assert stat.S_IMODE(path.stat().st_mode) == ds.OWNER_ONLY
-    output = capsys.readouterr().out
-    assert "secret-token" not in output
-    assert "/fairfieldct-ai/prod/discord-announcements-webhook" in output
-
-
-def test_announcements_webhook_posts_as_the_community_with_its_icon(tmp_path):
-    api = FakeApi(channels=configured_server())
-    ds.setup(api, tmp_path)
-    hooks = {p: b for m, p, b in api.writes if m == "POST" and p.endswith("/webhooks")}
-    assert hooks["/channels/announcements/webhooks"]["name"] == "fairfieldct.ai"
-    assert hooks["/channels/announcements/webhooks"]["avatar"].startswith("data:image/png;base64,")
-    assert "avatar" not in hooks["/channels/inbox/webhooks"]
-
-
-def test_only_the_missing_webhook_is_created(tmp_path):
-    api = FakeApi(channels=configured_server(), webhooks=[{"name": "Inbox"}])
-    ds.setup(api, tmp_path)
-    created = [p for m, p, _ in api.writes if m == "POST" and p.endswith("/webhooks")]
-    assert created == ["/channels/announcements/webhooks"]
-
-
-def test_registers_ping_and_meetup(tmp_path):
-    api = FakeApi(channels=configured_server())
-    ds.setup(api, tmp_path)
-    commands = next(b for m, _, b in api.writes if m == "PUT")
+def test_registers_ping_and_meetup():
+    api = FakeApi()
+    ds.setup(api)
+    path = f"/applications/{ds.APPLICATION_ID}/commands"
+    commands = next(b for m, p, b in api.writes if m == "PUT" and p == path)
     assert [c["name"] for c in commands] == ["ping", "meetup"]
 
 
-class DryRunApi(FakeApi):
-    """Answers writes with placeholders, as a dry run does, and rejects reads of them."""
+def test_registers_linked_roles_metadata():
+    api = FakeApi()
+    ds.setup(api)
+    path = f"/applications/{ds.APPLICATION_ID}/role-connections/metadata"
+    metadata = next(b for m, p, b in api.writes if m == "PUT" and p == path)
+    assert metadata == [
+        {
+            "type": 7,
+            "key": "member",
+            "name": "fairfieldct.ai member",
+            "description": "Has a fairfieldct.ai account",
+        }
+    ]
 
-    def get(self, path: str) -> Any:
-        assert "<" not in path, f"read a placeholder: {path}"
-        return super().get(path)
 
-    def write(self, method: str, path: str, body: Any, *, describe: str) -> Any:
-        self.writes.append((method, path, body))
-        return {"id": ds.placeholder(describe), "code": "c", "token": "t"}
+def test_dry_run_prints_changes_without_sending_them(monkeypatch, capsys):
+    def urlopen(request):
+        raise AssertionError("a dry run sent a request")
 
-
-def test_dry_run_on_a_new_server_skips_reads_of_channels_that_dont_exist(tmp_path):
-    api = DryRunApi(channels=[], dry_run=True, guild={})
-    ds.setup(api, tmp_path)
-    assert api.created()
-    assert not list(tmp_path.glob("*-webhook-url"))
+    monkeypatch.setattr(ds.urllib.request, "urlopen", urlopen)
+    api = ds.Discord("token", dry_run=True)
+    assert api.write("PUT", "/x", [], describe="register /ping") is None
+    assert capsys.readouterr().out == "would register /ping\n"
 
 
 def http_error(code: int, body: dict[str, Any]) -> urllib.error.HTTPError:
@@ -258,25 +130,3 @@ def test_requests_authenticate_as_the_bot(monkeypatch):
     assert seen[0].get_header("Authorization") == "Bot abc"
     assert seen[0].get_method() == "PUT"
     assert json.loads(seen[0].data) == [1]
-
-
-def test_registers_linked_roles_metadata(tmp_path):
-    api = FakeApi(channels=configured_server())
-    ds.setup(api, tmp_path)
-    path = f"/applications/{ds.APPLICATION_ID}/role-connections/metadata"
-    metadata = next(b for m, p, b in api.writes if m == "PUT" and p == path)
-    assert metadata == [
-        {
-            "type": 7,
-            "key": "member",
-            "name": "fairfieldct.ai member",
-            "description": "Has a fairfieldct.ai account",
-        }
-    ]
-
-
-def test_member_role_has_no_permissions(tmp_path):
-    api = FakeApi(channels=configured_server())
-    ds.setup(api, tmp_path)
-    member = next(b for m, _, b in api.writes if m == "POST" and b.get("name") == "Member")
-    assert member["permissions"] == "0"
