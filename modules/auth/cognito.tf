@@ -76,6 +76,11 @@ resource "aws_cognito_user_pool_client" "web" {
   prevent_user_existence_errors = "ENABLED"
   enable_token_revocation       = true
 
+  # Minutes a sign-in session lasts, which bounds how long members have to
+  # enter an emailed code. The default of 3 is too short to switch to an email
+  # app and back; 15 is the maximum.
+  auth_session_validity = 15
+
   access_token_validity  = 60
   id_token_validity      = 60
   refresh_token_validity = 30
