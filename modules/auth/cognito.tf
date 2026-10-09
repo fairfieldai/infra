@@ -47,8 +47,13 @@ resource "aws_cognito_user_pool" "this" {
     from_email_address    = var.from_email_address
   }
 
+  # The organization's resource control policy denies Cognito calls from
+  # outside the organization, which includes the anonymous SignUp,
+  # ConfirmSignUp, and InitiateAuth calls the site's /join/ page makes for
+  # passwordless sign-up. This tag is the policy's exclusion.
   tags = merge(var.tags, {
-    Name = var.name
+    Name                  = var.name
+    "dp:exclude:identity" = "true"
   })
 }
 
