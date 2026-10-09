@@ -13,8 +13,9 @@ resource "aws_cognito_user_pool" "this" {
     case_sensitive = false
   }
 
-  # Managed login always asks for a password at sign-up; afterward users can
-  # sign in with it, an emailed code, or a passkey.
+  # Managed login always asks for a password at sign-up, so the site's /join/
+  # page signs members up through the API without one. Members can sign in
+  # with an emailed code, a passkey, or a password if they set one.
   sign_in_policy {
     allowed_first_auth_factors = ["PASSWORD", "EMAIL_OTP", "WEB_AUTHN"]
   }
