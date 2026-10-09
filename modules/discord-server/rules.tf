@@ -8,6 +8,7 @@ resource "discord_message" "rules" {
     help_and_questions = discord_forum_channel.help_and_questions.id
     announcements      = discord_announcement_channel.announcements.id
   }))
+  suppress_embeds = true
 }
 
 resource "discord_invite" "permanent" {

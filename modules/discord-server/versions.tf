@@ -8,7 +8,7 @@ terraform {
     }
     discord = {
       source  = "smoketurner/discord"
-      version = "~> 0.1"
+      version = "~> 0.3"
     }
   }
 }

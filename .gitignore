@@ -43,9 +43,3 @@ __pycache__/
 
 # Placeholder Lambda zip built by modules/api
 .build/
-.venv/
-.pytest_cache/
-.ruff_cache/
-
-# Discord webhook URLs written by scripts/discord before they're stored in SSM
-*-webhook-url
