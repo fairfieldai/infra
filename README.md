@@ -10,10 +10,13 @@ Terraform for the fairfieldct.ai AWS account (401429382694).
   - `dev` — static site and API at `dev.fairfieldct.ai`, sign-in at `auth.dev.fairfieldct.ai`
   - `prod` — static site and API at `www.fairfieldct.ai`; `fairfieldct.ai` redirects to it;
     sign-in at `auth.fairfieldct.ai`
+  - `discord` — the Discord server and the fairfieldct.ai bot application
 - `modules/` — reusable modules called by the environments
   - `api` — HTTP API Gateway, Rust Lambda, DynamoDB table, and IAM role
   - `auth` — Cognito user pool, managed login domain, and app client
   - `discord` — Lambda for Discord interactions and webhook events
+  - `discord-server` — Discord roles, channels, permissions, settings, AutoMod, slash
+    commands, Linked Roles metadata, rules post, invite, and webhooks
   - `dns` — Route 53 public hosted zone
   - `github-environment` — GitHub Environment, deploy rules, and Actions variables
   - `github-oidc` — GitHub Actions OIDC provider and deploy roles
@@ -97,20 +100,22 @@ aws cloudfront create-invalidation --paths '/*' \
 
 ## Discord server
 
-`scripts/discord/discord_setup.py` configures the fairfieldct.ai Discord server: roles,
-channels and permissions, server settings, the rules post, AutoMod, slash commands, the
-invite, and the `#inbox` webhook. It matches everything by name, so rerunning updates the
-server in place. It reads the bot token from SSM. The bot needs the Administrator
-permission while it runs, even with `--dry-run` (reading AutoMod rules requires it), so turn
-it on for the `fairfieldct.ai bot` role first and off again afterward. A newly created
-webhook's URL is written to an owner-only file with the `aws ssm put-parameter` command to
-store it.
+The `discord` environment manages the fairfieldct.ai Discord server with the
+[`smoketurner/discord`](https://registry.terraform.io/providers/smoketurner/discord/latest)
+provider: roles, channels and permissions, server settings, AutoMod rules, the `/ping` and
+`/meetup` slash commands, the Linked Roles metadata, the rules post, the invite, and the
+`#inbox` and `#announcements` webhooks, whose URLs it stores in SSM. The provider reads the
+bot token from `DISCORD_TOKEN`:
 
 ```sh
-make discord-plan    # print the changes
-make discord-apply   # apply them
-make discord-check   # ruff, ty, and pytest
+export DISCORD_TOKEN=$(aws ssm get-parameter --profile fairfieldct-ai-admin \
+  --name /fairfieldct-ai/discord-bot-token --with-decryption \
+  --query Parameter.Value --output text)
+make plan ENV=discord
 ```
+
+The Member role's Linked Roles requirement is set by hand in Discord, since the API can't
+attach it to a role.
 
 ## CI
 

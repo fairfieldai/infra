@@ -1,7 +1,7 @@
 ENV ?= global
 DIR = environments/$(ENV)
 
-.PHONY: init fmt reconfigure validate lint plan apply refresh destroy discord-plan discord-apply discord-check
+.PHONY: init fmt reconfigure validate lint plan apply refresh destroy
 
 init:
 	cd $(DIR) && terraform init -upgrade
@@ -30,19 +30,3 @@ refresh:
 
 destroy:
 	cd $(DIR) && terraform destroy
-
-# Discord AutoMod, slash commands, and Linked Roles metadata (scripts/discord).
-# The server layout itself is the discord environment: make plan ENV=discord.
-DISCORD = cd scripts/discord && uv run --locked
-
-discord-plan:
-	$(DISCORD) python discord_setup.py --dry-run
-
-discord-apply:
-	$(DISCORD) python discord_setup.py
-
-discord-check:
-	$(DISCORD) ruff format --check
-	$(DISCORD) ruff check
-	$(DISCORD) ty check
-	$(DISCORD) pytest -q

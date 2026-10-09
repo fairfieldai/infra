@@ -110,7 +110,7 @@ module "discord" {
   announcements_webhook_parameter = "${local.ssm_parameter_path}/discord-announcements-webhook"
 
   # Needs the reminder code deployed and the webhook parameter in place
-  # (scripts/discord creates the webhook).
+  # (the discord environment creates the webhook).
   reminders_enabled = true
 
   deploy_role_name = data.aws_iam_role.deploy.name

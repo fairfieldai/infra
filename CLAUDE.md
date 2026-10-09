@@ -12,9 +12,6 @@ make validate              # terraform validate (runs fmt first)
 make lint                  # tflint across all environments and modules
 make plan                  # terraform plan (runs validate first)
 make apply                 # terraform apply
-make discord-plan          # Discord AutoMod, commands, and Linked Roles metadata, dry run
-make discord-apply         # Discord AutoMod, commands, and Linked Roles metadata
-make discord-check         # ruff, ty, and pytest for scripts/discord
 make refresh               # terraform refresh
 ```
 
@@ -29,7 +26,7 @@ Terraform for the fairfieldct.ai AWS account (401429382694, us-east-1). Four env
 | `global` | Account-wide resources: the `fairfieldct.ai` Route 53 hosted zone, GitHub OIDC provider, and deploy roles |
 | `dev` | Static site and API at `dev.fairfieldct.ai`, sign-in at `auth.dev.fairfieldct.ai` |
 | `prod` | Static site and API at `www.fairfieldct.ai`, with `fairfieldct.ai` redirecting to it; sign-in at `auth.fairfieldct.ai` |
-| `discord` | The Discord server's roles, channels, permissions, settings, rules post, invite, and webhooks, plus the webhook URLs in SSM |
+| `discord` | The Discord server's roles, channels, permissions, settings, AutoMod rules, rules post, invite, and webhooks, the bot application's slash commands and Linked Roles metadata, and the webhook URLs in SSM |
 
 ```
 environments/
@@ -41,7 +38,7 @@ modules/
   api/              # HTTP API Gateway + Rust Lambda, DynamoDB table, IAM
   auth/             # Cognito user pool, managed login domain, and app client
   discord/          # Discord interactions and webhook events Lambda, routed on the HTTP API
-  discord-server/   # Discord roles, channels, permissions, server settings, rules post, invite, webhooks
+  discord-server/   # Discord roles, channels, permissions, server settings, AutoMod, commands, Linked Roles metadata, rules post, invite, webhooks
   dns/              # Route 53 public hosted zone
   github-environment/ # GitHub Environment, deploy rules, and Actions variables in fairfieldai/site
   github-oidc/      # GitHub Actions OIDC provider and per-environment deploy roles
@@ -74,12 +71,10 @@ Each environment's `versions.tf` configures the S3 backend: bucket `terraform-st
 
 ### Discord server
 
-The `discord` environment manages the server (ID `1557456560488448190`) with the [`smoketurner/discord`](https://registry.terraform.io/providers/smoketurner/discord/latest) provider through `modules/discord-server`: the Organizer, Speaker / Demo, and Member roles (Member's Links requirement is set by hand in Discord), categories and channels, read-only and private channel overwrites, channel order, server icon and settings, the rules post in `#welcome-and-rules` (`rules.md.tftpl`), the permanent invite, and the `#inbox` and `#announcements` webhooks with their URLs in SSM. The provider reads the bot token from `DISCORD_TOKEN`, e.g. `DISCORD_TOKEN=$(aws ssm get-parameter --profile fairfieldct-ai-admin --name /fairfieldct-ai/discord-bot-token --with-decryption --query Parameter.Value --output text) make plan ENV=discord`. The bot keeps the Administrator permission.
-
-`scripts/discord/discord_setup.py` (a uv project with ruff, ty, and pytest configured in its `pyproject.toml`) covers what the provider can't yet: the AutoMod spam and keyword-preset rules, the `/ping` and `/meetup` commands (`COMMANDS`), and the Linked Roles `member` metadata (`ROLE_CONNECTION_METADATA`). Run it with `--dry-run` first.
+The `discord` environment manages the server (ID `1557456560488448190`) with the [`smoketurner/discord`](https://registry.terraform.io/providers/smoketurner/discord/latest) provider through `modules/discord-server`: the Organizer, Speaker / Demo, and Member roles (Member's Links requirement is set by hand in Discord), categories and channels, read-only and private channel overwrites, channel order, server icon and settings, the AutoMod spam and keyword-preset rules (Discord's own mention-spam rule is left unmanaged), the `/ping` and `/meetup` slash commands, the Linked Roles `member` metadata, the rules post in `#welcome-and-rules` (`rules.md.tftpl`), the permanent invite, and the `#inbox` and `#announcements` webhooks with their URLs in SSM. The provider reads the bot token from `DISCORD_TOKEN`, e.g. `DISCORD_TOKEN=$(aws ssm get-parameter --profile fairfieldct-ai-admin --name /fairfieldct-ai/discord-bot-token --with-decryption --query Parameter.Value --output text) make plan ENV=discord`. The bot keeps the Administrator permission.
 
 ### CI
 
-`.github/workflows/ci.yml` runs on PRs targeting `main` and on `workflow_dispatch`: `terraform fmt -check`, credential-free `terraform validate` (`init -backend=false`) for every environment, `tflint --recursive` using `.tflint.hcl`, and ruff, ty, and pytest for `scripts/discord`. CI does not plan or apply; apply is done locally.
+`.github/workflows/ci.yml` runs on PRs targeting `main` and on `workflow_dispatch`: `terraform fmt -check`, credential-free `terraform validate` (`init -backend=false`) for every environment, and `tflint --recursive` using `.tflint.hcl`. CI does not plan or apply; apply is done locally.
 
 When adding an environment, add it to the `validate` matrix. GitHub Actions must be pinned to a commit SHA with a version comment, never a tag. The Terraform and TFLint versions are set in the workflow's `env` block.
