@@ -24,3 +24,23 @@ resource "aws_route53_record" "dmarc" {
   ttl     = 3600
   records = ["v=DMARC1; p=reject"]
 }
+
+# Verifies the domain for GitHub Pages in the fairfieldai organization, so no
+# other account can claim fairfieldct.ai or its subdomains for a Pages site.
+resource "aws_route53_record" "github_pages_challenge" {
+  zone_id = aws_route53_zone.this.zone_id
+  name    = "_github-pages-challenge-fairfieldai.${var.domain_name}"
+  type    = "TXT"
+  ttl     = 3600
+  records = ["d1b28610e479e7c6945649a36e5b91"]
+}
+
+# Verifies the domain for the fairfieldai organization, so GitHub can mark it
+# verified and restrict notification email to fairfieldct.ai addresses.
+resource "aws_route53_record" "github_org_challenge" {
+  zone_id = aws_route53_zone.this.zone_id
+  name    = "_gh-fairfieldai-o.${var.domain_name}"
+  type    = "TXT"
+  ttl     = 3600
+  records = ["f550544959"]
+}
