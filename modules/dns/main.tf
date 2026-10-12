@@ -34,3 +34,13 @@ resource "aws_route53_record" "github_pages_challenge" {
   ttl     = 3600
   records = ["d1b28610e479e7c6945649a36e5b91"]
 }
+
+# Verifies the domain for the fairfieldai organization, so GitHub can mark it
+# verified and restrict notification email to fairfieldct.ai addresses.
+resource "aws_route53_record" "github_org_challenge" {
+  zone_id = aws_route53_zone.this.zone_id
+  name    = "_gh-fairfieldai-o.${var.domain_name}"
+  type    = "TXT"
+  ttl     = 3600
+  records = ["f550544959"]
+}
