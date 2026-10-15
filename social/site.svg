@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <rect width="1280" height="640" fill="#11314a"/>
+  <circle cx="1060" cy="250" r="120" fill="#e3b23c"/>
+  <path transform="translate(0 50)" d="M0 440c160-60 320-60 480 0s320 60 480 0 240-60 320-24v224H0z" fill="#1d7a66"/>
+  <path transform="translate(0 50)" d="M0 520c160-48 320-48 480 0s320 48 480 0 240-48 320-12v132H0z" fill="#4cc3a5"/>
+  <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" fill="#ffffff">
+    <text x="96" y="170" font-size="40" fill="#e3b23c" font-weight="600">fairfieldai /</text>
+    <text x="96" y="280" font-size="112" font-weight="700">site</text>
+    <text font-size="36" fill="#d6e4ee">
+      <tspan x="96" y="345">Website and API for fairfieldct.ai,</tspan>
+      <tspan x="96" y="392">a local AI community for Fairfield, CT</tspan>
+    </text>
+  </g>
+</svg>
