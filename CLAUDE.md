@@ -19,13 +19,14 @@ Targets that run in an environment default to `ENV=global` and run from `environ
 
 ## Architecture
 
-Terraform for the fairfieldct.ai AWS account (401429382694, us-east-1). Four environments, each a separate Terraform root with its own state:
+Terraform for the fairfieldct.ai AWS account (401429382694, us-east-1). Five environments, each a separate Terraform root with its own state:
 
 | Environment | Contents |
 |-------------|----------|
 | `global` | Account-wide resources: the `fairfieldct.ai` Route 53 hosted zone, GitHub OIDC provider, and deploy roles |
 | `dev` | Static site and API at `dev.fairfieldct.ai`, sign-in at `auth.dev.fairfieldct.ai` |
 | `prod` | Static site and API at `www.fairfieldct.ai`, with `fairfieldct.ai` redirecting to it; sign-in at `auth.fairfieldct.ai` |
+| `github` | Settings, Actions permissions, and `main` rulesets for the `fairfieldai/site`, `fairfieldai/infra`, and `fairfieldai/.github` repositories |
 | `discord` | The Discord server's roles, channels, permissions, settings, AutoMod rules, rules post, invite, and webhooks, the bot application's slash commands and Linked Roles metadata, and the webhook URLs in SSM |
 
 ```
@@ -34,6 +35,7 @@ environments/
   dev/
   prod/
   discord/          # Discord server layout (smoketurner/discord provider)
+  github/           # fairfieldai repository settings (integrations/github provider)
 modules/
   api/              # HTTP API Gateway + Rust Lambda, DynamoDB table, IAM
   auth/             # Cognito user pool, managed login domain, and app client
@@ -42,6 +44,7 @@ modules/
   dns/              # Route 53 public hosted zone
   github-environment/ # GitHub Environment, deploy rules, and Actions variables in fairfieldai/site
   github-oidc/      # GitHub Actions OIDC provider and per-environment deploy roles
+  github-repository/ # Repository settings, Actions permissions, and default-branch ruleset
   static-site/      # S3 + CloudFront + ACM static site, optional apex redirect
 ```
 
@@ -61,6 +64,7 @@ Apply `global` first: `dev` and `prod` look up its hosted zone with `data.aws_ro
 - **Email**: the `fairfieldct-inbox-prod` CloudFormation stack (not managed here) owns SES, the `inbox.fairfieldct.ai` domain, and an AgentMail-compatible mailbox API on a Lambda function URL. `modules/api` reads that stack's outputs with `data.aws_cloudformation_stack` and passes the API base URL to the Lambda, which sends and reads mail only through that API as `hello@inbox.fairfieldct.ai`; it has no access to the stack's DynamoDB tables. Email events go to the stack's `fairfieldct-inbox-prod-events` EventBridge bus. Both dev and prod use this one stack.
 - **Deploy roles**: `global` creates `fairfieldct-ai-<env>-deploy`, assumable only by `fairfieldai/site` jobs running in the matching GitHub Environment. The repo uses GitHub's immutable OIDC subject format, so the trusted `sub` is `repo:fairfieldai@338284335/site@1409002923:environment:<env>`. The roles carry no permissions of their own: `dev` and `prod` look each role up with `data.aws_iam_role`, and the `static-site` and `api` modules attach inline policies scoped to their own bucket, distribution, and function.
 - **GitHub Environments**: `dev` and `prod` each manage their `fairfieldai/site` GitHub Environment with the `integrations/github` provider and set its Actions variables (`AWS_ROLE_ARN`, `AWS_REGION`, `S3_BUCKET`, `CLOUDFRONT_DISTRIBUTION_ID`, `LAMBDA_FUNCTION_NAME`, `COGNITO_DOMAIN`, `COGNITO_CLIENT_ID`, `COGNITO_ISSUER`) from their own resources. `prod` only deploys from `main` after approval. Plan and apply for `dev` and `prod` need `GITHUB_TOKEN` set, e.g. `GITHUB_TOKEN=$(gh auth token) make plan ENV=prod`.
+- **GitHub repositories**: the `github` root manages each `fairfieldai` repository through `modules/github-repository`: description, homepage, topics, features, squash-only merges with the pull request title as the subject, vulnerability alerts off, Actions limited to SHA-pinned actions, and a `main` ruleset that requires a pull request (no approvals, since there is one maintainer), blocks force-pushes and deletion, and requires the repository's CI checks from GitHub Actions. Repository admins can merge a pull request past failing checks but cannot push to `main` directly. The repositories have `prevent_destroy`. Plan and apply need `GITHUB_TOKEN`, e.g. `GITHUB_TOKEN=$(gh auth token) make plan ENV=github`. When a CI job is added or renamed, update that repository's `required_checks`; for this repo, that includes each new environment's `Validate (environments/<env>)` job. GitHub has no API for social preview images, so the 1280×640 previews in `social/` (SVG sources and rendered PNGs, made with `rsvg-convert -w 1280 -h 640`) are uploaded by hand under each repository's Settings → Social preview.
 - **Secrets**: store them as SecureString SSM parameters under `/fairfieldct-ai/<environment>/`, encrypted with the AWS managed `aws/ssm` key; never Secrets Manager. Parameters are created outside Terraform so values never land in state. The one exception is the two Discord webhook URLs: the `discord` root creates the webhooks and writes `/fairfieldct-ai/prod/discord-inbox-webhook` and `/fairfieldct-ai/prod/discord-announcements-webhook`, so those URLs are in its state.
 - **Bucket naming**: buckets use the S3 account-regional namespace (`bucket_namespace = "account-regional"`, name suffix `-<account>-<region>-an`).
 - **AWS profile**: the backend and provider both hardcode the `fairfieldct-ai-admin` profile.
@@ -77,4 +81,4 @@ The `discord` environment manages the server (ID `1557456560488448190`) with the
 
 `.github/workflows/ci.yml` runs on PRs targeting `main` and on `workflow_dispatch`: `terraform fmt -check`, credential-free `terraform validate` (`init -backend=false`) for every environment, and `tflint --recursive` using `.tflint.hcl`. CI does not plan or apply; apply is done locally.
 
-When adding an environment, add it to the `validate` matrix. GitHub Actions must be pinned to a commit SHA with a version comment, never a tag. The Terraform and TFLint versions are set in the workflow's `env` block.
+When adding an environment, add it to the `validate` matrix and to the `infra` repository's `required_checks` in `environments/github/main.tf`. GitHub Actions must be pinned to a commit SHA with a version comment, never a tag. The Terraform and TFLint versions are set in the workflow's `env` block.

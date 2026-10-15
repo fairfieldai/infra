@@ -11,6 +11,7 @@ Terraform for the fairfieldct.ai AWS account (401429382694).
   - `prod` — static site and API at `www.fairfieldct.ai`; `fairfieldct.ai` redirects to it;
     sign-in at `auth.fairfieldct.ai`
   - `discord` — the Discord server and the fairfieldct.ai bot application
+  - `github` — settings and `main` rulesets for the `fairfieldai` GitHub repositories
 - `modules/` — reusable modules called by the environments
   - `api` — HTTP API Gateway, Rust Lambda, DynamoDB table, and IAM role
   - `auth` — Cognito user pool, managed login domain, and app client
@@ -20,6 +21,8 @@ Terraform for the fairfieldct.ai AWS account (401429382694).
   - `dns` — Route 53 public hosted zone
   - `github-environment` — GitHub Environment, deploy rules, and Actions variables
   - `github-oidc` — GitHub Actions OIDC provider and deploy roles
+  - `github-repository` — repository settings, Actions permissions, and the default-branch ruleset
+- `social/` — GitHub social preview images for each repository
   - `static-site` — S3 bucket, CloudFront distribution, and ACM certificate for a
     static site, with an optional S3 redirect for other hostnames
 
@@ -37,8 +40,8 @@ make plan ENV=global
 make apply ENV=global
 ```
 
-`dev` and `prod` also manage GitHub Environments in `fairfieldai/site`, so they
-need a GitHub token:
+`dev` and `prod` also manage GitHub Environments in `fairfieldai/site`, and `github`
+manages the `fairfieldai` repositories, so they need a GitHub token:
 
 ```sh
 GITHUB_TOKEN=$(gh auth token) make plan ENV=prod
@@ -116,6 +119,21 @@ make plan ENV=discord
 
 The Member role's Linked Roles requirement is set by hand in Discord, since the API can't
 attach it to a role.
+
+## GitHub repositories
+
+The `github` environment manages `fairfieldai/site`, `fairfieldai/infra`, and
+`fairfieldai/.github`: description, homepage, topics, squash-only merges,
+vulnerability alerts (off), SHA-pinned Actions, and a ruleset that requires pull
+requests and passing CI checks for `main`. Repository admins can merge a pull
+request past failing checks but can't push to `main` directly.
+
+GitHub has no API for social preview images. Upload `social/<repo>.png` by hand
+under each repository's Settings → Social preview. After editing an SVG, render it with:
+
+```sh
+rsvg-convert -w 1280 -h 640 social/site.svg -o social/site.png
+```
 
 ## CI
 
